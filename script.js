@@ -13,7 +13,7 @@ function addFileUpload() {
     fileInput.accept = '.csv';
     
     const makeSelection = document.createElement('select');
-    const makes = ['Unfiltered', 'Acura', 'Audi', 'Buick', 'Cadillac', 'Chevrolet', 'Chrysler', 'Dodge', 'Ford', 'GMC', 'Honda', 'Hyundai', 'Jeep', 'Nissan', 'Ram', 'Volvo', 'Subaru', 'Porsche'];
+    const makes = ['Acura', 'Audi', 'Buick', 'Cadillac', 'Chevrolet', 'Chrysler', 'Dodge', 'Ford', 'GMC', 'Honda', 'Hyundai', 'Jeep', 'Nissan', 'Ram', 'Volvo', 'Subaru', 'Porsche'];
     makes.forEach(make => {
         const option = document.createElement('option');
         option.value = make;
