@@ -1,6 +1,7 @@
-from flask import Flask, request
+from flask import Flask, request, send_file
 import pandas as pd
 import io
+from tempfile import NamedTemporaryFile
 
 app = Flask(__name__)
 
@@ -54,23 +55,37 @@ def combine_dataframes(dfs):
 @app.route('/upload', methods=['POST'])
 def upload_file():
     dfs = []
+    dealership_name = request.form['dealershipName']
 
     # Process each uploaded file based on its 'Make'
-    for make in request.files:
-        file = request.files[make]
-        df = read_csv_with_make(io.StringIO(file.stream.read().decode("utf-8")), make)
-        dfs.append(df)
+    for key in request.files:
+        if key.startswith('file'):
+            file_index = key[len('file'):]
+            make = request.form.get('make' + file_index, 'Unfiltered')
+            file = request.files[key]
+            df = read_csv_with_make(io.StringIO(file.stream.read().decode("utf-8")), make)
+            df['Dealership'] = dealership_name  # Add the dealership name to each DataFrame
+            dfs.append(df)
 
     # Combine all dataframes
     combined_df = combine_dataframes(dfs)
 
-    # Additional processing steps can be added here
-    # ...
+    # Apply additional processing steps to the combined DataFrame
+    combined_df = convert_currency_to_numeric(combined_df, ['Total Front Gross', 'Total Back Gross', 'Total Gross'])
+    combined_df = round_small_to_zero(combined_df, ['Total Front Gross', 'Total Back Gross', 'Total Gross'])
 
-    # Save the combined DataFrame
-    combined_df.to_csv('final_combined_output.csv', index=False)
+    # Calculate 'Other' make values
+    specifics = {df['Make'].iloc[0]: df for df in dfs if df['Make'].iloc[0] != 'Unfiltered'}
+    df_others = calculate_others(combined_df, specifics)
+    combined_df = pd.concat([combined_df, df_others])
 
-    return "Files processed successfully", 200
+    # Save the combined DataFrame to a temporary file
+    temp_file = NamedTemporaryFile(mode='w+', delete=False, suffix='.csv', encoding='utf-8')
+    combined_df.to_csv(temp_file.name, index=False)
+    temp_file.close()
+
+    # Send the file back to the client
+    return send_file(temp_file.name, as_attachment=True, attachment_filename=f'{dealership_name}_processed_output.csv')
 
 if __name__ == '__main__':
     app.run(debug=True)
